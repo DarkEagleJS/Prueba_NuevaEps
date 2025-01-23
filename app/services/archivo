@@ -1,0 +1,27 @@
+<?php
+// app/services/ArchivoService.php
+
+class ArchivoService {
+    private $archivoModel;
+
+    public function __construct() {
+        $this->archivoModel = new Archivo();
+    }
+
+    // Crear un nuevo archivo
+    public function crearArchivo($id_contrato, $nombre, $ruta) {
+        // Lógica de negocio para manejar la carga del archivo
+        return $this->archivoModel->guardarArchivo($id_contrato, $nombre, $ruta);
+    }
+
+    // Obtener archivos por contrato
+    public function obtenerArchivosPorContrato($id_contrato) {
+        return $this->archivoModel->obtenerPorContrato($id_contrato);
+    }
+
+    // Eliminar un archivo por su ID
+    public function eliminarArchivo($id) {
+        return $this->archivoModel->eliminarArchivo($id);
+    }
+}
+?>

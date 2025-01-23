@@ -1,0 +1,26 @@
+<?php
+// app/services/RegimenService.php
+
+class RegimenService {
+    private $regimenModel;
+
+    public function __construct() {
+        $this->regimenModel = new Regimen();
+    }
+
+    // Obtener régimen por ID
+    public function obtenerRegimenPorId($id) {
+        return $this->regimenModel->obtenerPorId($id);
+    }
+
+    // Listar todos los regímenes
+    public function listarRegimenes() {
+        return $this->regimenModel->listarRegimenes();
+    }
+
+    // Crear un nuevo régimen
+    public function crearRegimen($descripcion) {
+        return $this->regimenModel->guardarRegimen($descripcion);
+    }
+}
+?>

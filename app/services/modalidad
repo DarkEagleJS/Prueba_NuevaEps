@@ -1,0 +1,26 @@
+<?php
+// app/services/ModalidadService.php
+
+class ModalidadService {
+    private $modalidadModel;
+
+    public function __construct() {
+        $this->modalidadModel = new Modalidad();
+    }
+
+    // Obtener modalidad por ID
+    public function obtenerModalidadPorId($id) {
+        return $this->modalidadModel->obtenerPorId($id);
+    }
+
+    // Listar todas las modalidades
+    public function listarModalidades() {
+        return $this->modalidadModel->listarModalidades();
+    }
+
+    // Crear una nueva modalidad
+    public function crearModalidad($descripcion) {
+        return $this->modalidadModel->guardarModalidad($descripcion);
+    }
+}
+?>

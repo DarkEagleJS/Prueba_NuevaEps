@@ -1,0 +1,36 @@
+<?php
+// app/controllers/ArchivoController.php
+
+class ArchivoController extends Controller {
+
+    // Subir un archivo para un contrato
+    public function subir($id_contrato) {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $nombre = $_FILES['archivo']['name'];
+            $ruta = 'uploads/' . $nombre;  // Ruta donde se almacenará el archivo
+
+            // Mover el archivo al servidor
+            move_uploaded_file($_FILES['archivo']['tmp_name'], $ruta);
+
+            // Crear el archivo en la base de datos
+            $archivo = new Archivo();
+            $archivo->setIdContrato($id_contrato);
+            $archivo->setNombre($nombre);
+            $archivo->setRuta($ruta);
+            $archivo->guardarArchivo();
+
+            // Redirigir al detalle del contrato
+            header("Location: /contratos/ver/$id_contrato");
+        } else {
+            $this->view('archivos/subir');
+        }
+    }
+
+    // Ver los archivos asociados a un contrato
+    public function ver($id_contrato) {
+        $archivoModel = new Archivo();
+        $archivos = $archivoModel->obtenerPorContrato($id_contrato);
+        $this->view('archivos/index', ['archivos' => $archivos]);
+    }
+}
+?>

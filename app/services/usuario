@@ -1,0 +1,36 @@
+<?php
+// app/services/UsuarioService.php
+
+class UsuarioService {
+    private $usuarioModel;
+
+    public function __construct() {
+        $this->usuarioModel = new Usuario();
+    }
+
+    // Registrar un nuevo usuario
+    public function registrarUsuario($nombre, $email, $password) {
+        // Lógica de negocio para validar datos o encriptar la contraseña
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+        // Crear un nuevo usuario en la base de datos
+        return $this->usuarioModel->guardarUsuario($nombre, $email, $hashedPassword);
+    }
+
+    // Autenticar un usuario
+    public function autenticarUsuario($email, $password) {
+        $usuario = $this->usuarioModel->obtenerPorEmail($email);
+
+        if ($usuario && password_verify($password, $usuario['password'])) {
+            return $usuario; // Devuelve los datos del usuario si la autenticación es exitosa
+        }
+
+        return null; // Si no es válido, devuelve null
+    }
+
+    // Obtener datos del usuario por su ID
+    public function obtenerUsuarioPorId($id) {
+        return $this->usuarioModel->obtenerPorId($id);
+    }
+}
+?>

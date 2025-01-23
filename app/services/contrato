@@ -1,0 +1,27 @@
+<?php
+// app/services/ContratoService.php
+
+class ContratoService {
+    private $contratoModel;
+
+    public function __construct() {
+        $this->contratoModel = new Contrato();
+    }
+
+    // Crear un nuevo contrato
+    public function crearContrato($id_usuario, $id_modalidad, $id_regimen, $fecha_inicio, $fecha_fin) {
+        // Lógica de negocio para verificar las fechas o realizar validaciones
+        return $this->contratoModel->guardarContrato($id_usuario, $id_modalidad, $id_regimen, $fecha_inicio, $fecha_fin);
+    }
+
+    // Obtener contrato por su ID
+    public function obtenerContratoPorId($id) {
+        return $this->contratoModel->obtenerPorId($id);
+    }
+
+    // Listar todos los contratos
+    public function listarContratos() {
+        return $this->contratoModel->listarContratos();
+    }
+}
+?>

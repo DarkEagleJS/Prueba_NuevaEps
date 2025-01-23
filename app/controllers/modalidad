@@ -1,0 +1,20 @@
+<?php
+// app/controllers/ModalidadController.php
+
+class ModalidadController extends Controller {
+
+    // Mostrar todas las modalidades
+    public function index() {
+        $modalidadModel = new Modalidad();
+        $modalidades = $modalidadModel->obtenerTodasModalidades();
+        $this->view('modalidades/index', ['modalidades' => $modalidades]);
+    }
+
+    // Ver detalles de una modalidad
+    public function ver($id_modalidad) {
+        $modalidadModel = new Modalidad();
+        $modalidad = $modalidadModel->obtenerPorId($id_modalidad);
+        $this->view('modalidades/ver', ['modalidad' => $modalidad]);
+    }
+}
+?>
