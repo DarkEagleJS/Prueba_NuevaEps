@@ -1,0 +1,370 @@
+¡Entiendo! Te proporcionaré un ejemplo completo y mejorado del código teniendo en cuenta las recomendaciones previas, aplicando las buenas prácticas en arquitectura, seguridad, validación, y organización de código, manteniendo el patrón MVC.
+
+Este ejemplo estará dividido en varias partes: Modelo, Vista, Controlador, Router, y las mejoras de seguridad, validación e inyección de dependencias.
+
+Estructura de Archivos y Carpetas
+plaintext
+Copy
+/mi_app
+    /config
+        config.php
+        Database.php
+    /controllers
+        UsuarioController.php
+        ContratoController.php
+    /models
+        Usuario.php
+        UsuarioRepositorio.php
+        Contrato.php
+        ContratoRepositorio.php
+    /views
+        lista_usuarios.php
+        lista_contratos.php
+        crear_usuario.php
+        crear_contrato.php
+    /public
+        index.php
+        assets/
+            css/
+            js/
+        uploads/
+    /utils
+        Validador.php
+        CSRF.php
+        Router.php
+1. Configuración de la Base de Datos (config/Database.php)
+php
+Copy
+<?php
+
+class Database {
+    private $host = 'localhost';
+    private $db_name = 'mi_db';
+    private $username = 'root';
+    private $password = '';
+    public $conn;
+
+    public function getConnection() {
+        $this->conn = null;
+
+        try {
+            $this->conn = new PDO("mysql:host=$this->host;dbname=$this->db_name", $this->username, $this->password);
+            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (PDOException $exception) {
+            echo "Error al conectar a la base de datos: " . $exception->getMessage();
+        }
+
+        return $this->conn;
+    }
+}
+2. Clase Validador (utils/Validador.php)
+php
+Copy
+<?php
+
+class Validador {
+    public static function validarString($input, $minLength = 1, $maxLength = 255) {
+        $input = trim($input);
+        if (strlen($input) < $minLength || strlen($input) > $maxLength) {
+            return false;
+        }
+        return true;
+    }
+
+    public static function validarEmail($email) {
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    }
+
+    public static function validarArchivo($archivo) {
+        $allowedExtensions = ['pdf', 'docx', 'jpg'];
+        $fileExtension = pathinfo($archivo['name'], PATHINFO_EXTENSION);
+        if (!in_array($fileExtension, $allowedExtensions)) {
+            return false;
+        }
+        return true;
+    }
+}
+3. Clase CSRF (utils/CSRF.php)
+php
+Copy
+<?php
+
+class CSRF {
+    public static function generarToken() {
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['csrf_token'];
+    }
+
+    public static function verificarToken($token) {
+        return $token === $_SESSION['csrf_token'];
+    }
+}
+4. Repositorios Base y Específicos (models/RepositorioBase.php y models/UsuarioRepositorio.php)
+Repositorio Base (models/RepositorioBase.php)
+php
+Copy
+<?php
+
+abstract class RepositorioBase {
+    protected $db;
+
+    public function __construct($db) {
+        $this->db = $db;
+    }
+
+    protected function ejecutarConsulta($query, $params = []) {
+        $stmt = $this->db->prepare($query);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+        return $stmt;
+    }
+}
+Repositorio de Usuario (models/UsuarioRepositorio.php)
+php
+Copy
+<?php
+
+class UsuarioRepositorio extends RepositorioBase {
+    public function obtenerTodos() {
+        $query = "SELECT * FROM usuarios";
+        $stmt = $this->ejecutarConsulta($query);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function crearUsuario($username, $password) {
+        $query = "INSERT INTO usuarios (username, password) VALUES (:username, :password)";
+        $this->ejecutarConsulta($query, [
+            ':username' => $username,
+            ':password' => password_hash($password, PASSWORD_DEFAULT)
+        ]);
+    }
+}
+Repositorio de Contrato (models/ContratoRepositorio.php)
+php
+Copy
+<?php
+
+class ContratoRepositorio extends RepositorioBase {
+    public function obtenerTodos() {
+        $query = "SELECT * FROM contratos";
+        $stmt = $this->ejecutarConsulta($query);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function crearContrato($contrato, $modalidad, $regimen, $archivo) {
+        $query = "INSERT INTO contratos (contrato, modalidad, regimen, archivo) VALUES (:contrato, :modalidad, :regimen, :archivo)";
+        $this->ejecutarConsulta($query, [
+            ':contrato' => $contrato,
+            ':modalidad' => $modalidad,
+            ':regimen' => $regimen,
+            ':archivo' => $archivo
+        ]);
+    }
+}
+5. Controladores (controllers/UsuarioController.php y controllers/ContratoController.php)
+Controlador de Usuario (controllers/UsuarioController.php)
+php
+Copy
+<?php
+
+class UsuarioController {
+    private $usuarioRepo;
+
+    public function __construct(UsuarioRepositorio $usuarioRepo) {
+        $this->usuarioRepo = $usuarioRepo;
+    }
+
+    public function listarUsuarios() {
+        $usuarios = $this->usuarioRepo->obtenerTodos();
+        require_once 'views/lista_usuarios.php';
+    }
+
+    public function crearUsuario() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Validaciones
+            if (!Validador::validarString($_POST['username'], 3, 100) || !Validador::validarString($_POST['password'], 6, 100)) {
+                die("Usuario o contraseña inválidos.");
+            }
+
+            // Crear usuario
+            $this->usuarioRepo->crearUsuario($_POST['username'], $_POST['password']);
+            header("Location: /usuarios");
+        }
+
+        // Mostrar formulario
+        require_once 'views/crear_usuario.php';
+    }
+}
+Controlador de Contrato (controllers/ContratoController.php)
+php
+Copy
+<?php
+
+class ContratoController {
+    private $contratoRepo;
+
+    public function __construct(ContratoRepositorio $contratoRepo) {
+        $this->contratoRepo = $contratoRepo;
+    }
+
+    public function listarContratos() {
+        $contratos = $this->contratoRepo->obtenerTodos();
+        require_once 'views/lista_contratos.php';
+    }
+
+    public function crearContrato() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Validaciones
+            if (!Validador::validarString($_POST['contrato'], 3, 100)) {
+                die("Contrato inválido.");
+            }
+
+            // Validar archivo
+            if (!Validador::validarArchivo($_FILES['archivo'])) {
+                die("Archivo no permitido.");
+            }
+
+            // Crear contrato
+            $archivo = 'uploads/' . $_FILES['archivo']['name'];
+            move_uploaded_file($_FILES['archivo']['tmp_name'], $archivo);
+            $this->contratoRepo->crearContrato($_POST['contrato'], $_POST['modalidad'], $_POST['regimen'], $archivo);
+            header("Location: /contratos");
+        }
+
+        // Mostrar formulario
+        require_once 'views/crear_contrato.php';
+    }
+}
+6. Vista (views/lista_usuarios.php y views/lista_contratos.php)
+Vista de Lista de Usuarios (views/lista_usuarios.php)
+php
+Copy
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lista de Usuarios</title>
+</head>
+<body>
+    <h1>Usuarios</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($usuarios as $usuario): ?>
+                <tr>
+                    <td><?php echo htmlspecialchars($usuario['username']); ?></td>
+                    <td><a href="editar_usuario.php?id=<?php echo $usuario['id']; ?>">Editar</a> | <a href="eliminar_usuario.php?id=<?php echo $usuario['id']; ?>">Eliminar</a></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    <a href="crear_usuario.php">Crear Usuario</a>
+</body>
+</html>
+Vista de Lista de Contratos (views/lista_contratos.php)
+php
+Copy
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lista de Contratos</title>
+</head>
+<body>
+    <h1>Contratos</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Contrato</th>
+                <th>Modalidad</th>
+                <th>Régimen</th>
+                <th>Archivo</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($contratos as $contrato): ?>
+                <tr>
+                    <td><?php echo htmlspecialchars($contrato['contrato']); ?></td>
+                    <td><?php echo htmlspecialchars($contrato['modalidad']); ?></td>
+                    <td><?php echo htmlspecialchars($contrato['regimen']); ?></td>
+                    <td><a href="<?php echo htmlspecialchars($contrato['archivo']); ?>" target="_blank">Ver archivo</a></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    <a href="crear_contrato.php">Crear Contrato</a>
+</body>
+</html>
+7. Router (utils/Router.php)
+php
+Copy
+<?php
+
+class Router {
+    private $routes = [];
+
+    public function addRoute($method, $path, $callback) {
+        $this->routes[] = ['method' => $method, 'path' => $path, 'callback' => $callback];
+    }
+
+    public function dispatch($method, $path) {
+        foreach ($this->routes as $route) {
+            if ($route['method'] === $method && $route['path'] === $path) {
+                return call_user_func($route['callback']);
+            }
+        }
+    }
+}
+8. Archivo Público (public/index.php)
+php
+Copy
+<?php
+session_start();
+require_once '../config/Database.php';
+require_once '../models/UsuarioRepositorio.php';
+require_once '../models/ContratoRepositorio.php';
+require_once '../controllers/UsuarioController.php';
+require_once '../controllers/ContratoController.php';
+require_once '../utils/Validador.php';
+require_once '../utils/CSRF.php';
+require_once '../utils/Router.php';
+
+$database = new Database();
+$db = $database->getConnection();
+
+$usuarioRepo = new UsuarioRepositorio($db);
+$contratoRepo = new ContratoRepositorio($db);
+
+$usuarioController = new UsuarioController($usuarioRepo);
+$contratoController = new ContratoController($contratoRepo);
+
+$router = new Router();
+
+// Definir las rutas
+$router->addRoute('GET', '/usuarios', [$usuarioController, 'listarUsuarios']);
+$router->addRoute('POST', '/usuarios/crear', [$usuarioController, 'crearUsuario']);
+$router->addRoute('GET', '/contratos', [$contratoController, 'listarContratos']);
+$router->addRoute('POST', '/contratos/crear', [$contratoController, 'crearContrato']);
+
+// Enviar la solicitud al router
+$router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
+?>
+Conclusión
+Este código refactorizado utiliza varias buenas prácticas:
+
+Validaciones centralizadas en una clase Validador.
+Protección CSRF mediante tokens.
+Repositorio base para manejar consultas comunes de manera reutilizable.
+Inyección de dependencias en los controladores.
+Router básico para gestionar las rutas de la aplicación.
+Este patrón permite escalar la aplicación de forma modular y mantener el código limpio y organizado.
+
+
+
